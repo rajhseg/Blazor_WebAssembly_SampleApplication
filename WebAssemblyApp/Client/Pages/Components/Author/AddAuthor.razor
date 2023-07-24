@@ -1,0 +1,71 @@
+﻿
+@page "/addauthor"
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using WebAssemblyApp.Client.Services
+@using WebAssemblyApp.Shared
+
+@inject NavigationManager navigationManager;
+@inject IHttpClientFactory httpClientFactory;
+@inject IJsConsole jsConsole;
+@inject AuthenticationStateProvider authProvider;
+
+@implements IDisposable
+
+@attribute [Authorize(Roles ="User,Admin")]
+
+@{
+    <EditForm Model="AuthorData" method="post">		
+    <DataAnnotationsValidator />
+        <div>
+            <label>Author Name :</label>
+            <InputText @bind-Value="AuthorData.Name" />
+            <ValidationMessage For="@(()=>AuthorData.Name)" />
+        </div>
+        <br />
+        <div>
+            <button class="btn btn-primary" type="submit" @onclick="AddAuthorData">Add</button>
+            <button class="btn btn-primary" @onclick="BacktoAuthor">Back</button>
+        </div>		
+    </EditForm>
+}
+@code {
+
+    AuthorModel AuthorData { get; set; } = new AuthorModel();
+
+    private HttpClient client;
+
+    protected override Task OnInitializedAsync()
+    {
+        client = httpClientFactory.CreateClient("api");
+        return base.OnInitializedAsync();
+    }
+
+    private void BacktoAuthor(){
+        this.navigationManager.NavigateTo("/listauthor");
+    }
+
+    private async Task AddAuthorData(){
+        var provider = (WebAssemblyApp.Client.Models.Filters.BlazorAuthenticationStateProvider)authProvider;
+
+        AuthorData.PhotoName = "noimage.jpg";
+        AuthorData.UploadPhotoContent = new byte[] { };
+        AuthorData.DownloadPhotoContent = "";
+        AuthorData.Books = new List<BookModel>();
+
+        var response = await client.PostAsJsonAsync<AuthorModel>("Author/AddAuthor", AuthorData);
+
+        if(response.IsSuccessStatusCode){
+            this.navigationManager.NavigateTo("/listauthor");
+        } else{
+            await jsConsole.Log("Exception");
+        }
+
+    }
+
+    public void Dispose()
+    {
+        client.Dispose();
+    }
+}

@@ -1,0 +1,68 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using WebAssemblyApp.Client.Models.Filters
+@inherits LayoutComponentBase
+
+@inject AuthenticationStateProvider authProvider;
+@inject NavigationManager navigationManager;
+
+@inject IJSRuntime jsruntime;
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+
+        <div class="top-row px-4">
+            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
+        
+            <Microsoft.AspNetCore.Components.Authorization.AuthorizeView Roles="User,Admin">
+                <Authorized>                
+                        <NavLink @onclick="SignOut">
+                            <span class="oi oi-list-rich" aria-hidden="true"></span> Logout @UserName
+                        </NavLink>                
+                </Authorized>
+                <NotAuthorized>                
+                        <NavLink  href="login">
+                            <span class="oi oi-list-rich" aria-hidden="true"></span> Login
+                        </NavLink>                
+                </NotAuthorized>
+            </Microsoft.AspNetCore.Components.Authorization.AuthorizeView>
+
+        </div>
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>   
+</div>
+
+@code{
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; }
+
+    private bool? IsAuthenticated { get; set; }
+
+    private string? UserName { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var provider = await authenticationState;
+        IsAuthenticated = provider?.User?.Identity?.IsAuthenticated;
+        UserName = provider?.User?.Identity?.Name;
+
+        StateHasChanged();
+
+        var jsRef = await jsruntime.InvokeAsync<IJSObjectReference>("import", "./js/todo.js");
+
+        await base.OnInitializedAsync();        
+    }
+
+    private async Task SignOut()
+    {
+        BlazorAuthenticationStateProvider provider = (BlazorAuthenticationStateProvider)authProvider;
+        await provider.UpdateAuthentication(null);
+        navigationManager.NavigateTo("/login");
+    }
+}

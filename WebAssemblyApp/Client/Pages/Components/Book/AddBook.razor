@@ -1,0 +1,113 @@
+﻿@page "/book/AddBook"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using WebAssemblyApp.Client.Services
+@using WebAssemblyApp.Shared
+@using WebAssemblyApp.Shared.ViewModel
+
+@inject NavigationManager navigationManager;
+@inject IHttpClientFactory httpClientFactory;
+@inject AuthenticationStateProvider authProvider;
+@inject IJsConsole jsConsole;
+
+@attribute [Authorize(Roles="User,Admin")]
+
+@implements IDisposable
+
+@if (Book == null)
+{
+	<p>Loading ...</p>
+}
+else{
+<h3>Add Book</h3>
+
+<EditForm method="post" Model="@Book">
+	<DataAnnotationsValidator />
+
+	<div class="mb-3">
+		<label class="form-label">Title</label>
+		<InputText @bind-Value="Book.Title" class="form-control"></InputText>
+		<ValidationMessage For="@(()=>Book.Title)"></ValidationMessage>
+	</div>
+	<div class="mb-3">
+		<label class="form-label">Description</label>
+		<input @bind-value="Book.Description" class="form-control" />
+		<ValidationMessage  For="(()=>Book.Description)"></ValidationMessage>
+	</div>
+	<div class="mb-3">
+		<label class="form-label">AuthorName</label>
+		<select @bind="Book.AuthorId" class="form-control">	
+			@if(Authors!=null){
+				foreach (var item in Authors)
+				{
+					<option value="@item.Value">@item.Text</option>
+				}
+			}
+		</select>
+		<ValidationMessage For="(()=> Book.AuthorId)"></ValidationMessage>
+	</div>
+	<br />
+	<div class="mb-3">
+		<button class="btn btn-primary" @onclick="Add">Add</button>
+		<button class="btn btn-primary" @onclick="Back">Back</button>
+	</div>
+</EditForm>
+}
+
+@code {
+
+	public BookModel Book { get; set; }
+
+	public IEnumerable<AuthorComboModel> Authors { get; set; }
+
+	private HttpClient client;
+
+	protected override Task OnInitializedAsync()
+	{
+		client = httpClientFactory.CreateClient("api");
+		LoadData();
+		return base.OnInitializedAsync();
+	}
+
+	private async Task LoadData()
+	{
+		var provider = (WebAssemblyApp.Client.Models.Filters.BlazorAuthenticationStateProvider)authProvider;
+
+		var result = await client.GetFromJsonAsync<List<AuthorModel>>("/Author/GetAuthors");
+
+		this.Authors = result!=null ? result.Select(x => new AuthorComboModel { Text = x.Name, Value = x.Id.ToString() }).ToList() : new List<AuthorComboModel>();
+		this.Book = new BookModel { };
+		StateHasChanged();
+	}
+
+	private async Task Add()
+	{
+		if (Book.Title != "" && Book.Description != "" && Book.AuthorId > 0)
+		{
+			Book.AuthorName = this.Authors.FirstOrDefault(x=>x.Value == Book.AuthorId.ToString()).Text;
+
+			var provider = (WebAssemblyApp.Client.Models.Filters.BlazorAuthenticationStateProvider)authProvider;
+
+			var result = await client.PostAsJsonAsync<BookModel>("/Book/AddBook", Book);
+
+			if (result.IsSuccessStatusCode)
+			{
+				navigationManager.NavigateTo("/book");
+			}
+			else
+			{
+				await jsConsole.Log("Exception while add book " + Book.Title);
+			}
+		}
+	}
+
+	private void Back()
+	{
+		navigationManager.NavigateTo("/book");
+	}
+
+	public void Dispose()
+	{
+		client.Dispose();
+	}
+}

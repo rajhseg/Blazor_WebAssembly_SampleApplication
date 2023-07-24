@@ -1,0 +1,185 @@
+﻿@page "/author/edit/{Id}"
+
+@attribute [Authorize(Roles ="User")]
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using WebAssemblyApp.Client.Services
+@using WebAssemblyApp.Shared
+@using WebAssemblyApp.Shared.ViewModel
+
+@inject NavigationManager _navigationManager;
+@inject AuthenticationStateProvider authProvider;
+@inject IHttpClientFactory httpClientFactory;
+@inject IJsConsole jsConsole;
+
+@implements IDisposable
+
+@{
+	<div>
+			@if(AuthorData==null){
+				<p>Loading Data ....</p>
+		}
+		else{
+				<EditForm Model="@AuthorData" method="post" enctype="multipart/form-data">
+				<DataAnnotationsValidator />
+					<div class="container">
+						<div class="row">
+							<label class="col-sm-2">Author Id:</label>
+							<label class ="col-sm-4">@AuthorData.Id</label>
+						</div>
+						<div class="row">
+							<label class="col-sm-2">Author Name: </label>
+							<InputText class="col-sm-4" @bind-Value="@AuthorData.Name" />
+							<ValidationMessage For="(()=> AuthorData.Name)" ></ValidationMessage>
+						</div>
+						<div class="row">
+							<InputText @bind-Value="AuthorData.PhotoName" hidden />
+							<InputText @bind-Value="PhotoPath" hidden />
+						</div>
+
+						<br />
+					<div class="row">
+						<label class="col-sm-2 align-content-center align-content-sm-center align-middle">Photo :</label>
+						<img class="col-sm-4" src="@PhotoPath" asp-append-version="true" style="height:130px;width:150px;" />
+					</div>
+					<div class="row"><br /></div>
+					<div class="row">
+						<label class="col-form-label col-sm-2">Change Photo</label>
+						<div class="col-sm-4">
+							<div class="">
+								<InputFile id="choose-file" OnChange="@LoadImage" @bind-Value="@Photo" class="form-control" />
+							</div>
+						</div>
+						<div class="col-sm-2">							
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-sm-2"></div>
+						<div id="img-preview" class="col-sm-2">
+						<br/>
+							<img style="height:150px;width:150px;" src="@ImgUri" />
+						</div>
+					</div>
+					<br />
+					<div>
+						<button class="btn btn-primary" @onclick="UpdateAuthor" type="submit">Update</button>
+						<button class="btn btn-primary" style="margin-left:20px;" @onclick="BackToList" type="submit">Back</button>
+					</div>	
+
+					</div>
+				</EditForm>
+		}
+	</div>
+	
+}
+
+
+@code {
+
+	[Parameter]
+	public string Id { get; set; }
+
+	public AuthorModel AuthorData { get; set; }
+
+	private string PhotoPath { get; set; }
+
+	private IBrowserFile Photo { get; set; }
+
+	private byte[] UserPhotoInBytes { get; set; }
+
+	private string? ImgUri { get; set; }
+
+	private HttpClient client;
+
+	protected override async Task OnInitializedAsync()
+	{
+		var provider = (WebAssemblyApp.Client.Models.Filters.BlazorAuthenticationStateProvider)authProvider;
+		client = httpClientFactory.CreateClient("api");
+
+		var result = await client.GetFromJsonAsync<AuthorModel>("/Author/GetAuthor?id="+Id);
+
+		if (result!=null)
+		{
+			var model = result;
+			this.AuthorData = new AuthorModel { Id = model.Id, Name = model.Name, PhotoName = model.PhotoName };
+
+			if (!string.IsNullOrEmpty(model.PhotoName))
+			{	
+				var ext = model.PhotoName.Split(".");						
+				this.PhotoPath = $"data:image/{ext[ext.Length-1]};base64,{model.DownloadPhotoContent}";
+				await jsConsole.Log(model.DownloadPhotoContent);
+			}
+
+			StateHasChanged();
+		}
+
+		await base.OnInitializedAsync();
+	}
+
+
+	private async Task BackToList()
+	{
+		_navigationManager.NavigateTo("/listauthor");
+	}
+
+	private async Task LoadImage(InputFileChangeEventArgs e)
+	{
+		this.Photo = e.File;
+
+		var image = await e.File.RequestImageFileAsync(e.File.ContentType, 600, 600);
+
+		using Stream imageStream = image.OpenReadStream(1024 * 1024 * 10);
+
+		using MemoryStream ms = new();
+
+		await imageStream.CopyToAsync(ms);
+
+		this.UserPhotoInBytes = ms.ToArray();
+		ImgUri = $"data:image/png;base64,{Convert.ToBase64String(this.UserPhotoInBytes)}";
+
+		StateHasChanged();
+	}
+
+	private async Task UpdateAuthor()
+	{
+		var provider = (WebAssemblyApp.Client.Models.Filters.BlazorAuthenticationStateProvider)authProvider;
+
+		UpdateAuthorModel model = new UpdateAuthorModel
+		{			
+			Id = this.AuthorData.Id,
+			Name = this.AuthorData.Name,
+			PhotoName = this.AuthorData.PhotoName,
+			Books = this.AuthorData.Books
+		};
+
+		if (Photo != null && Photo.Size > 0)
+		{
+			model.PhotoName = this.Photo.Name;			
+			model.UserPhotoInBytes = this.UserPhotoInBytes;
+		}
+		else
+		{
+			model.PhotoName = "noimage.jpg";
+			model.UserPhotoInBytes = new byte[] { };
+		}
+
+		model.Books = new List<BookModel>();		
+
+		var result = await client.PostAsJsonAsync<UpdateAuthorModel>("/Author/UpdateAuthor", model);
+
+		if (result.IsSuccessStatusCode)
+		{
+			_navigationManager.NavigateTo("/listauthor");
+		}
+		else
+		{
+			await jsConsole.Log("Error while update author " + AuthorData.Name);
+		}
+	}
+
+	public void Dispose()
+	{
+		client.Dispose();
+	}
+}

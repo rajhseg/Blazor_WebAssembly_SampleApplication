@@ -1,0 +1,127 @@
+﻿@page "/book/edit/{id}"
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using WebAssemblyApp.Client.Services
+@using WebAssemblyApp.Shared
+@using WebAssemblyApp.Shared.ViewModel
+
+@inject NavigationManager navigationManager;
+@inject IHttpClientFactory httpClientFactory;
+@inject AuthenticationStateProvider authProvider;
+@inject IJsConsole jsConsole;
+
+@attribute [Authorize(Roles ="User,Admin")]
+
+@implements IDisposable
+
+@if (Book==null){
+	<p>Loading......</p>
+}
+else{
+<h3>EditBook</h3>
+
+	<EditForm Model="@Book" method="post">
+		<DataAnnotationsValidator />
+			<div class="mb-3">
+				<label class="form-label">BookId : </label>
+				<label class="form-label">@Book.Id</label>
+			</div>
+			<div class="mb-3">
+				<label class="form-label">Title</label>
+				<InputText @bind-Value="Book.Title" class="form-control" />
+				<ValidationMessage For="@(()=>Book.Title)"></ValidationMessage>
+			</div>
+			<div class="mb-3">
+				<label class="form-label">Description</label>
+				<InputText @bind-Value="Book.Description" class="form-control" />
+				<ValidationMessage For="@(()=>Book.Description)"></ValidationMessage>
+			</div>
+			<div class="mb-3">
+				<label class="form-label">AuthorName</label>
+				<select @bind="Book.AuthorId" class="form-control">
+			   	@if(Authors!=null){
+				   foreach (var item in Authors)
+					{
+							<option value="@item.Value">@item.Text</option>
+					}				   
+			   }
+				</select>
+			</div>
+			<br />
+			<div class="mb-3">
+				<button class="btn btn-primary" type="submit" @onclick="UpdateBook">Update</button>
+				<button class="btn btn-primary" @onclick="BackToList">Back</button>
+			</div>
+	</EditForm>
+}
+
+@code {
+
+	[Parameter]
+	public string Id { get; set; }
+
+	private BookModel Book { get; set; }
+
+	private IEnumerable<AuthorComboModel> Authors { get; set; }
+
+	private HttpClient client;
+
+	protected override Task OnInitializedAsync()
+	{
+		client = httpClientFactory.CreateClient("api");
+		LoadData();
+		return base.OnInitializedAsync();
+	}
+
+	private async Task LoadData()
+	{
+		var provider = (WebAssemblyApp.Client.Models.Filters.BlazorAuthenticationStateProvider)authProvider;
+
+		var result = await client.GetFromJsonAsync<List<AuthorModel>>("/Author/GetAuthors");
+
+		if (result != null)
+		{
+			this.Authors = result.Select(x => new AuthorComboModel { Text = x.Name, Value = x.Id.ToString() }).ToList();
+
+			var data = await client.GetFromJsonAsync<BookModel>("/Book/GetBook?id="+Id);
+
+			if (data == null)
+				navigationManager.NavigateTo("/book");
+
+			this.Book = new BookModel { Id = data.Id, Title = data.Title, Description = data.Description, AuthorId = data.AuthorId, AuthorName = data.AuthorName };
+		}
+		else
+		{
+			navigationManager.NavigateTo("/book");
+		}
+
+		StateHasChanged();
+	}
+
+	private async Task UpdateBook()
+	{
+		var provider = (WebAssemblyApp.Client.Models.Filters.BlazorAuthenticationStateProvider)authProvider;
+		var result = await client.PostAsJsonAsync<BookModel>("/Book/UpdateBook", Book);
+
+		if (result.IsSuccessStatusCode)
+		{
+			navigationManager.NavigateTo("/book");
+		}
+		else
+		{
+			await jsConsole.Log("Error while update author " + Book.Title);
+		}
+
+	}
+
+	private void BackToList()
+	{
+		this.navigationManager.NavigateTo("/book");
+	}
+
+	public void Dispose()
+	{
+		client.Dispose();
+	}
+}
