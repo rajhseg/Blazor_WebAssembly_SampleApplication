@@ -5,8 +5,6 @@ Following key **"JwtConfig:key": "CuYM000OLlMQG6VVLp1OH7Xzyw3eHuw1qvUC5dcGt8FLI"
 
 **Authorization Flow**
 
-**Blazor Webassembly**
-
 **Login with credentials 
       -> tokengenerate return token 
             -> delegateHandler(foreach httprequest Authorization header set) 
