@@ -7,6 +7,9 @@ Following key **"JwtConfig:key": "CuYM000OLlMQG6VVLp1OH7Xzyw3eHuw1qvUC5dcGt8FLI"
 
 **Blazor Webassembly**
 
-**Login with credentials -> tokengenerate return token -> delegateHandler(foreach httprequest Authorization header set) -> (based on JWTConfig in program.cs) Authorize Attribute validate.**
+**Login with credentials 
+      -> tokengenerate return token 
+            -> delegateHandler(foreach httprequest Authorization header set) 
+                  -> (based on JWTConfig in program.cs) Authorize Attribute validate.**
 
 
