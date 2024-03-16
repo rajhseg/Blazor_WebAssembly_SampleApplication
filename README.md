@@ -8,6 +8,6 @@ Authorization Flow
 **Login with credentials 
       -> tokengenerate return token 
             -> delegateHandler(foreach httprequest Authorization header set) 
-                  -> (based on JWTConfig in program.cs) Authorize Attribute validate.**
+                  -> (based on JWTConfig in program.cs) Authorize Attribute validate the Authorization header.**
 
 
