@@ -73,7 +73,7 @@ namespace WebAssemblyApp.Server.Controllers
                 return Unauthorized();
 
             var token = this.jwtAuthentication.GenerateJwtToken(loginUser.UserName, loginUser.Role);
-            var encodedToken = EncDecHelper.EncryptedData(token, password);
+            var encodedToken = EncDecHelper.EncryptedData(Guid.NewGuid().ToString(), password);
             var refreshToken = EncDecHelper.EncryptedData(Guid.NewGuid().ToString(), password);
              
             using(var trans = await this.unitOfWork.BeginTransactionAsync()){
