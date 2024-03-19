@@ -5,6 +5,7 @@
 @inject AuthenticationStateProvider authProvider;
 @inject NavigationManager navigationManager;
 
+@inject IHttpClientFactory httpClientFactory;
 @inject IJSRuntime jsruntime;
 
 <div class="page">
@@ -46,6 +47,7 @@
 
     private string? UserName { get; set; }
 
+    private HttpClient client;
     protected override async Task OnInitializedAsync()
     {
         var provider = await authenticationState;
@@ -56,13 +58,30 @@
 
         var jsRef = await jsruntime.InvokeAsync<IJSObjectReference>("import", "./js/todo.js");
 
+        client = this.httpClientFactory.CreateClient("api");        
+
         await base.OnInitializedAsync();        
     }
 
     private async Task SignOut()
     {
         BlazorAuthenticationStateProvider provider = (BlazorAuthenticationStateProvider)authProvider;
-        await provider.UpdateAuthentication(null);
-        navigationManager.NavigateTo("/login");
+        string token =  await provider.GetTokenFromSession();        
+        WebAssemblyApp.Shared.ViewModel.LoginModel model = new WebAssemblyApp.Shared.ViewModel.LoginModel();      
+        model.UserName = "samplename";
+        model.Password = token;        
+        var response = await client.PostAsJsonAsync<WebAssemblyApp.Shared.ViewModel.LoginModel>("/Login/signout", model);
+
+		try
+		{
+			if (response.IsSuccessStatusCode)
+			{
+                await provider.UpdateAuthentication(null);
+                navigationManager.NavigateTo("/login");
+            }
+        }
+        catch{
+           
+        }
     }
 }

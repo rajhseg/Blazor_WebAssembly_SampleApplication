@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using WebAssemblyApp.Server;
 using WebAssemblyApp.Server.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,9 +24,11 @@ builder.Services.AddDbContext<DbContext, AbcContext>(options => options.UseSqlSe
 
 builder.Services.AddSingleton<IAuthorRepository, AuthorRepository>();
 builder.Services.AddSingleton<IBooksRepository, BookRepository>();
+builder.Services.AddSingleton<ITokenRepository, TokenRepository>();
 builder.Services.AddSingleton<IUnitOfWork, UnitOfWork>();
 
 builder.Services.AddTransient<IAuthorService, AuthorService>();
+builder.Services.AddTransient<ITokenService, TokenService>();
 builder.Services.AddTransient<IBookService, BookService>();
 builder.Services.AddSingleton<IUserInfoService, UserInfoService>();
 builder.Services.AddTransient<IJwtAuthentication, JWTAuthentication>();
@@ -47,6 +50,32 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["JwtConfig:audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtConfig:key"]))
     };
+    
+    JwtBearerEvents events = new JwtBearerEvents();
+
+    events.OnMessageReceived =async (context) => {
+        var cToken = context.Request.Headers.Authorization.FirstOrDefault();
+
+        if(!string.IsNullOrEmpty(cToken)){
+            var bearer = cToken.Split(' ');
+            
+            if(bearer.Length==1)
+            return;
+
+            var token = bearer[1];
+            var tokenService = builder.Services.BuildServiceProvider().GetService<ITokenService>();
+
+            if(tokenService!=null){
+                var tokenData = await tokenService.GetActualToken(token);
+                if(tokenData!=null){
+                    context.Request.Headers.Authorization = "Bearer "+tokenData.ActualToken;
+                }
+            }
+        }
+    };
+    
+    // uncomment the line if you want to validate token in this event or use middleware
+    //options.Events = events;
 });
 
 var app = builder.Build();
@@ -70,6 +99,8 @@ app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseMiddleware<TokenMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
