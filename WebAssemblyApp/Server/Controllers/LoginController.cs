@@ -75,37 +75,28 @@ namespace WebAssemblyApp.Server.Controllers
             var token = this.jwtAuthentication.GenerateJwtToken(loginUser.UserName, loginUser.Role);
             var encodedToken = EncDecHelper.EncryptedData(token, password);
             var refreshToken = EncDecHelper.EncryptedData(Guid.NewGuid().ToString(), password);
+             
+            using(var trans = await this.unitOfWork.BeginTransactionAsync()){
+                try{        
+                    var tokenData = new ABC.Models.Token();
+                    tokenData.ActualToken = token;
+                    tokenData.ClientToken = encodedToken;
+                    tokenData.RefreshToken = refreshToken;
+                    await this.tokenService.AddToken(tokenData);
+                    await this.unitOfWork.CommitTransactionAsync(trans);
 
-             var _tkn = await this.tokenService.GetData(token);
-
-            if(_tkn==null)
-            {
-                using(var trans = await this.unitOfWork.BeginTransactionAsync()){
-                    try{        
-                        var tokenData = new ABC.Models.Token();
-                        tokenData.ActualToken = token;
-                        tokenData.ClientToken = encodedToken;
-                        tokenData.RefreshToken = refreshToken;
-                        await this.tokenService.AddToken(tokenData);
-                        await this.unitOfWork.CommitTransactionAsync(trans);
-
-                        var result = new UserInfoObject { Token = encodedToken, UserName = loginUser.UserName, 
-                                            Role = loginUser.Role, Expires = 20, RefreshToken = refreshToken };
-                        return Ok(result);
-                    }
-                    catch{
-                        await this.unitOfWork.RollbackTransactionAsync(trans);
-                        return Unauthorized();
-                    }
-                    finally{
-                        await trans.DisposeAsync();                    
-                    }
-                }            
-            } else {
-                 var result = new UserInfoObject { Token = _tkn.ClientToken, UserName = loginUser.UserName, 
-                                            Role = loginUser.Role, Expires = 20, RefreshToken = _tkn.RefreshToken };
-                        return Ok(result);
-            }
+                    var result = new UserInfoObject { Token = encodedToken, UserName = loginUser.UserName, 
+                                        Role = loginUser.Role, Expires = 20, RefreshToken = refreshToken };
+                    return Ok(result);
+                }
+                catch{
+                    await this.unitOfWork.RollbackTransactionAsync(trans);
+                    return Unauthorized();
+                }
+                finally{
+                    await trans.DisposeAsync();                    
+                }
+            }                        
         }
     }
 }
