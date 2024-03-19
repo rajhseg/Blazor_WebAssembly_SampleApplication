@@ -11,11 +11,13 @@ Authentication Flow
       
             -> delegateHandler(foreach httprequest Authorization header set by sending the encoded token) 
             
-                  -> Middleware will run before auth middleware , where we take the encoded token and get the actual token from db, then assign to Authorization header.
+                  -> Middleware will run before auth middleware , where we take the encoded token 
+                  and get the actual token from db, then assign to Authorization header.
 
                   (or)
                   
-                  -> instead of middleware we can use onMessageReceived event to assign the actual token from db. two ways we can do the reassign.
+                  -> instead of middleware we can use onMessageReceived event to assign the actual token 
+                  from db. two ways we can do the reassign.
                   
                         -> (based on JWTConfig in program.cs) Authorize Attribute validate the Claims.**
 
