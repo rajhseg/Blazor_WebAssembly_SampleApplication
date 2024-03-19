@@ -12,8 +12,8 @@ namespace WebAssemblyApp.Server.Auth
 
         public static string EncryptedData(string plainText, string passPhrase)
         {              
-            var saltString = Generate256BitsOfRandomEntropy();
-            var ivString = Generate256BitsOfRandomEntropy();
+            var saltString = Generate128Bit();
+            var ivString = Generate128Bit();
             var plainTextObj = Encoding.UTF8.GetBytes(plainText);
             using (var password = new Rfc2898DeriveBytes(passPhrase, saltString, DerivationIterations))
             {
@@ -74,7 +74,7 @@ namespace WebAssemblyApp.Server.Auth
             }
         }
 
-        private static byte[] Generate256BitsOfRandomEntropy()
+        private static byte[] Generate128Bit()
         {
             var rbytes = new byte[16]; 
             using (var csp = new RNGCryptoServiceProvider())
