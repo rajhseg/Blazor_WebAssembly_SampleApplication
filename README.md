@@ -7,7 +7,7 @@ Authentication Flow
 
 **Login with credentials 
 
-      -> tokengenerate return encoded token (save actual token in db)
+      -> tokengenerate return encoded mapping token which is mapped against actual JWT token (save actual token in db)
       
             -> delegateHandler(foreach httprequest Authorization header set by sending the encoded token) 
             
