@@ -5,9 +5,10 @@ Following key **"JwtConfig:key": "CuYM000OLlMQG6VVLp1OH7Xzyw3eHuw1qvUC5dcGt8FLI"
 
 Authentication Flow
 
-**Login with credentials 
+-> Login with credentials 
 
-      -> tokengenerate return encoded mapping token which is mapped against actual JWT token (save actual token in db)
+      -> tokengenerate return encoded mapping token which is mapped against actual JWT token 
+            (save actual token in db)
       
             -> delegateHandler(foreach httprequest Authorization header set by sending the encoded token) 
             
@@ -19,6 +20,6 @@ Authentication Flow
                   -> instead of middleware we can use onMessageReceived event to assign the actual token 
                   from db. two ways we can do the reassign.
                   
-                        -> (based on JWTConfig in program.cs) Authorize Attribute validate the Claims.**
+                        -> (based on JWTConfig in program.cs) Authorize Attribute validate the Claims.
 
 
